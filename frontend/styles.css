@@ -1,0 +1,74 @@
+/* Global Basics */
+body {
+    font-family: sans-serif;
+    background-color: #e2e8f0;
+    margin: 0;
+    padding: 20px;
+    color: #333;
+}
+
+.main-container {
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+/* The White Panels (The "2 Cards" you asked for) */
+.content-panel {
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    margin-bottom: 30px; /* Space between the two sections */
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.panel-title {
+    text-align: center;
+    margin-top: 0;
+    color: #2d3748;
+}
+
+/* --- SECTION 1: CENTERED DISPLAY --- */
+.centered-flex-container {
+    display: flex;
+    justify-content: center; /* This centers the card horizontally */
+    align-items: center;
+}
+
+.featured-card {
+    background: #f7fafc;
+    border: 2px solid #cbd5e0;
+    border-radius: 12px;
+    padding: 40px;          /* Big padding for emphasis */
+    text-align: center;
+    min-width: 300px;       /* Ensures it's not too skinny */
+}
+
+/* Big Text for the Featured Stock */
+.featured-symbol {
+    font-size: 3.5rem;
+    font-weight: bold;
+    margin: 10px 0;
+    color: #2d3748;
+}
+
+/* --- SECTION 2: GRID DISPLAY --- */
+.standard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+}
+
+.standard-card {
+    background: #f7fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+}
+
+/* Shared Utilities */
+.price-text { font-size: 1.25rem; color: #4a5568; margin: 10px 0; }
+.date-text { color: #718096; font-size: 0.9rem; text-transform: uppercase; }
+.pill { display: inline-block; padding: 5px 15px; border-radius: 20px; font-weight: bold; }
+.green { background: #c6f6d5; color: #22543d; }
+.red { background: #fed7d7; color: #822727; }
