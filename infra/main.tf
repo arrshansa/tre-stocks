@@ -1,5 +1,3 @@
-
-
 terraform {
   required_providers {
     aws = {
@@ -135,7 +133,7 @@ resource "aws_lambda_function" "stocks_lambda" {
       S3_BUCKET_NAME         = aws_s3_bucket.my_bucket.bucket
       DYNAMODB_TABLE_NAME    = aws_dynamodb_table.stocks_db.name
       MASSIVE_API_SECRET_ARN = aws_secretsmanager_secret.massive_api.arn
-      API_URL                = "https://api.massive.com/v2/aggs/ticker"
+      API_URL                = "https://api.massive.com/v1/open-close"
     }
   }
 }

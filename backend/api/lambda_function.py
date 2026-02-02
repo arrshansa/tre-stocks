@@ -1,31 +1,30 @@
 import boto3 
 import json 
 import os
-import urllib3
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from secrets_helper import get_massive_api_key
+from data_helper import get_market_date_str, fetch_open_close
 
-http = urllib3.PoolManager()
+
 dynamodb = boto3.resource('dynamodb')
 
 table_name = os.environ.get('DYNAMODB_TABLE_NAME')
-table = dynamodb.Table(table_name)
-
-api_url = os.environ.get('API_URL')
-api_key = get_massive_api_key()
-
 if not table_name:
     raise ValueError("Environment variable DYNAMODB_TABLE_NAME must be set.")
-if not api_url:
-    raise ValueError("Environment variable API_URL must be set.")
-if not api_key:
-    raise ValueError("Environment variable MASSIVE_API_Key must be set.")
-
+table = dynamodb.Table(table_name)
 print("DynamoDB Table Name:", table_name)
 
-stocks_list = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA']
+api_url = os.environ.get('API_URL')
+if not api_url:
+    raise ValueError("Environment variable API_URL must be set.")
 
+api_key = get_massive_api_key()
+if not api_key:
+    raise ValueError("Massive API key could not be loaded (check Secrets Manager secret value and MASSIVE_API_SECRET_ARN).")
+
+
+stocks_list = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'NVDA']
 
 class DecimalEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -35,72 +34,58 @@ class DecimalEncoder(json.JSONEncoder):
     
 
 def lambda_handler(event, context):
-    print(f"Fetching stock data from Massive API at {api_url}")
-    fetched_data = []
-    
+    market_date = get_market_date_str()
+    print(f"Computing biggest mover for {market_date}")
+
+    best = None
+
     for symbol in stocks_list:
         try:
-            print("Log: fetching data from external Massive API")
+            data = fetch_open_close(api_url, api_key, symbol, market_date)
+            if not data:
+                continue
 
-            symbols_query = ','.join(stocks_list)
-            full_api_url = f"{api_url}/{symbol}/prev?adjusted=true&apiKey={api_key}"
+            open_price = data["open"]
+            close_price = data["close"]
+            pct = ((close_price - open_price) / open_price) * 100.0  # percent change
 
-            print(f"Fetching {symbol} -> {full_api_url}")
-            response = http.request('GET', full_api_url)
+            print(f"{symbol}: open={open_price} close={close_price} pct_change={pct:.4f}%")
 
-            if response.status != 200:
-                raise Exception(f"Failed to fetch {symbol}: {response.status}")
-
-            stock_data = json.loads(response.data.decode('utf-8'))
-            
-
-            if stock_data.get("status") == "OK" and stock_data.get("results"):
-                result = stock_data['results'][0]
-                price = result.get('c') # 'c' is the Close Price
-                            
-                if price is None:
-                    print(f"No close price for {symbol} in payload: {stock_data}")
-                else:
-                    stock_obj = {"symbol": symbol, "price": price}
-                    fetched_data.append(stock_obj)
-                    print(f"Fetched {symbol}: {price}")
-            else:
-                print(f"No data found for {symbol}")
+            if best is None or abs(pct) > abs(best["pct_change"]):
+                best = {
+                    "date": market_date,
+                    "symbol": symbol,
+                    "pct_change": pct,
+                    "close": close_price,
+                }
 
         except Exception as e:
-            print(f"Exception for {symbol}: {str(e)}")
-                
-    if fetched_data:
-        store_in_dynamodb(fetched_data)
-        return {
-            "statusCode": 200,
-            "body": json.dumps(
-                {"message": "Success", "data": fetched_data},
-                cls=DecimalEncoder
-            )
-        }
-    else:
+            print(f"Exception for {symbol}: {e}")
+
+    if not best:
         return {
             "statusCode": 500,
-            "body": json.dumps({"error": "Failed to fetch any stock data"})
+            "body": json.dumps({"error": f"No open/close data found for {market_date}"}),
         }
+
+    store_winner_in_dynamodb(best)
+
+    return {
+        "statusCode": 200,
+        "body": json.dumps({"message": "Winner stored", "winner": best}, cls=DecimalEncoder),
+    }
+
     
-def store_in_dynamodb(stock_data):
-    now = datetime.utcnow()
-    today_str = now.strftime('%Y-%m-%d')
+def store_winner_in_dynamodb(winner: dict):
+    fetched_at = datetime.now(timezone.utc).isoformat()
 
-    for stock in stock_data:
-        if 'symbol' not in stock or 'price' not in stock:
-            print(f"Skipping invalid stock data: {stock}")
-            continue
+    item = {
+        "date": winner["date"],
+        "symbol": winner["symbol"],  # you can keep as sort key
+        "percent_change": Decimal(str(winner["pct_change"])),
+        "close": Decimal(str(winner["close"])),
+        "fetched_at": fetched_at,
+    }
 
-        price = Decimal(str(stock['price']))
-
-        item = {
-            'date': today_str,
-            'symbol': stock['symbol'],
-            'price': price,
-            'fetched_at': now.isoformat()
-        }
-        table.put_item(Item=item)
-        print(f"Stored item in DynamoDB: {item}")
+    table.put_item(Item=item)
+    print(f"Stored WINNER in DynamoDB: {item}")
