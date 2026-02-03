@@ -4,7 +4,7 @@ import os
 from datetime import datetime, timezone
 from decimal import Decimal
 from secrets_helper import get_massive_api_key
-from data_helper import get_market_date_str, fetch_open_close
+from market_data import get_latest_market_date, fetch_open_close
 
 
 dynamodb = boto3.resource('dynamodb')
@@ -34,7 +34,7 @@ class DecimalEncoder(json.JSONEncoder):
     
 
 def lambda_handler(event, context):
-    market_date = get_market_date_str()
+    market_date = get_latest_market_date(api_url, api_key)
     print(f"Computing biggest mover for {market_date}")
 
     best = None

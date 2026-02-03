@@ -81,7 +81,8 @@ resource "aws_iam_policy" "lambda_policy" {
           "dynamodb:PutItem",
           "dynamodb:UpdateItem",
           "dynamodb:GetItem",
-          "dynamodb:Scan"
+          "dynamodb:Scan",
+          "dynamodb:Query"
         ],
         Resource = aws_dynamodb_table.stocks_db.arn
       },
@@ -114,18 +115,18 @@ resource "aws_iam_role_policy_attachment" "lambda_policy_attach" {
 # Zipping the Lambda function code
 data "archive_file" "lambda_zip" {
   type        = "zip"
-  source_dir  = "../backend/api"
+  source_dir  = "../backend"
   output_path = "lambda_function.zip"
 }
 
 # Creating the Lambda function to fetch stock prices and store them in DynamoDB
-resource "aws_lambda_function" "stocks_lambda" {
-  function_name    = "grab-stock-prices"
+resource "aws_lambda_function" "compute_todays_mover_lambda" {
+  function_name    = "compute-todays-movers"
   role             = aws_iam_role.lambda_role.arn
-  handler          = "lambda_function.lambda_handler"
+  handler          = "todays_mover_lambda.lambda_handler"
   runtime          = "python3.14"
   filename         = data.archive_file.lambda_zip.output_path
-  source_code_hash = filebase64sha256(data.archive_file.lambda_zip.output_path)
+  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
   timeout          = 30
 
   environment {
@@ -134,6 +135,22 @@ resource "aws_lambda_function" "stocks_lambda" {
       DYNAMODB_TABLE_NAME    = aws_dynamodb_table.stocks_db.name
       MASSIVE_API_SECRET_ARN = aws_secretsmanager_secret.massive_api.arn
       API_URL                = "https://api.massive.com/v1/open-close"
+    }
+  }
+}
+
+resource "aws_lambda_function" "get_previous_movers_lambda" {
+  function_name    = "get-previous-movers"
+  role             = aws_iam_role.lambda_role.arn
+  handler          = "previous_movers_lambda.lambda_handler"
+  runtime          = "python3.14"
+  filename         = data.archive_file.lambda_zip.output_path
+  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
+  timeout          = 10
+
+  environment {
+    variables = {
+      DYNAMODB_TABLE_NAME = aws_dynamodb_table.stocks_db.name
     }
   }
 }
@@ -149,14 +166,14 @@ resource "aws_cloudwatch_event_rule" "console" {
 resource "aws_cloudwatch_event_target" "lambda_target" {
   rule      = aws_cloudwatch_event_rule.console.name
   target_id = "grab-stock-prices"
-  arn       = aws_lambda_function.stocks_lambda.arn
+  arn       = aws_lambda_function.compute_todays_mover_lambda.arn
 }
 
 # Giving CloudWatch permission to invoke the Lambda function
 resource "aws_lambda_permission" "allow_cloudwatch" {
   statement_id  = "AllowExecutionFromCloudWatch"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.stocks_lambda.function_name
+  function_name = aws_lambda_function.compute_todays_mover_lambda.function_name
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.console.arn
 }

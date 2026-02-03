@@ -1,1 +1,1 @@
-{"statusCode": 200, "body": "{\"message\": \"Success\", \"data\": [{\"symbol\": \"AAPL\", \"price\": 259.48}, {\"symbol\": \"MSFT\", \"price\": 430.29}, {\"symbol\": \"GOOGL\", \"price\": 338}, {\"symbol\": \"AMZN\", \"price\": 239.3}]}"}
+{"statusCode": 200, "body": "{\"message\": \"Winner stored\", \"winner\": {\"date\": \"2026-02-02\", \"symbol\": \"AAPL\", \"pct_change\": 3.8380186901511437, \"close\": 270.01}}"}

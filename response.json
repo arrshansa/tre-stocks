@@ -1,1 +1,1 @@
-{"statusCode": 200, "body": "{\"message\": \"Success\", \"data\": [{\"symbol\": \"AAPL\", \"price\": 259.48}]}"}
+{"statusCode": 200, "headers": {"Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET"}, "body": "[{\"percent_change\": -2.0219960379807356, \"date\": \"2026-01-30\", \"fetched_at\": \"2026-02-03T04:47:03.987057+00:00\", \"close\": 430.29, \"symbol\": \"MSFT\"}]"}
