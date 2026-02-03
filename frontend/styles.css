@@ -54,7 +54,7 @@ body {
 /* --- SECTION 2: GRID DISPLAY --- */
 .standard-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    flex-direction: column;
     gap: 20px;
 }
 
@@ -68,7 +68,7 @@ body {
 
 /* Shared Utilities */
 .price-text { font-size: 1.25rem; color: #4a5568; margin: 10px 0; }
-.date-text { color: #718096; font-size: 0.9rem; text-transform: uppercase; }
+.date-text { color: #718096; font-size: 1.2rem; text-transform: uppercase; }
 .pill { display: inline-block; padding: 5px 15px; border-radius: 20px; font-weight: bold; }
 .green { background: #c6f6d5; color: #22543d; }
 .red { background: #fed7d7; color: #822727; }

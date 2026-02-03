@@ -1,6 +1,7 @@
 import boto3 
 import json 
 import os
+import time
 from datetime import datetime, timezone
 from decimal import Decimal
 from secrets_helper import get_massive_api_key
@@ -26,22 +27,32 @@ if not api_key:
 
 stocks_list = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'NVDA']
 
+# Encoder to convert DynamoDB Decimal types to float for JSON serialization
 class DecimalEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, Decimal):
             return float(obj)
         return super(DecimalEncoder, self).default(obj)
     
-
+# Lambda handler to compute and store today's biggest mover
 def lambda_handler(event, context):
-    market_date = get_latest_market_date(api_url, api_key)
-    print(f"Computing biggest mover for {market_date}")
+    print("SCHEDULED RUN:", datetime.now(timezone.utc).isoformat(), "UTC")
 
+    # If provided, run for a specific date (YYYY-MM-DD)
+    override_date = None
+    if isinstance(event, dict):
+        override_date = event.get("market_date")
+
+    #market_date = get_latest_market_date(api_url, api_key)
+    market_date = override_date or get_latest_market_date(api_url, api_key)
+    print(f"Computing biggest mover for {market_date}")
+    
     best = None
 
     for symbol in stocks_list:
         try:
             data = fetch_open_close(api_url, api_key, symbol, market_date)
+            time.sleep(2)
             if not data:
                 continue
 
@@ -75,7 +86,7 @@ def lambda_handler(event, context):
         "body": json.dumps({"message": "Winner stored", "winner": best}, cls=DecimalEncoder),
     }
 
-    
+# Store the winning stock's data in DynamoDB    
 def store_winner_in_dynamodb(winner: dict):
     fetched_at = datetime.now(timezone.utc).isoformat()
 
